@@ -64,12 +64,13 @@ Mid<-nests %>%
 Pheno<-left_join(Start,Start33) %>%
   left_join(Mid) %>%
   left_join(End) %>%
-  select(Season,starts_with("DO")) %>%
+  dplyr::select(Season,starts_with("DO")) %>%
   gather(Type,DOS,DOS_start:DOSA_end) %>%
   arrange(Season,Type) %>%
   mutate(Anomoly=str_detect(Type,"A"),
          Type=str_replace(Type,"DOSA_|DOS_",""),
-         Anomoly=ifelse(Anomoly==TRUE,"Anomoly","DOS"))
+         Anomoly=ifelse(Anomoly==TRUE,"Anomoly","DOS"),
+         Duation=end-start)
 
 Pheno$Type<-factor(Pheno$Type,levels=c("start","First33","mid","Last33","end"))
 
@@ -90,10 +91,6 @@ ggplot(Pheno,aes(Season,DOS))+
 
 library(broom)
 # There is a negitive relationship between last33 and year. not sure if valid since I have not throughly checked last33 for sanity
-Pheno %>%
-  group_by(Type,Anomoly) %>%
-  do(glance(lm(DOS~Season,data=.)))
-
 Pheno %>%
   group_by(Type,Anomoly) %>%
   do(glance(lm(DOS~Season,data=.)))
