@@ -422,3 +422,20 @@ ggplot(chl,aes(x=ymd(Date),y=log(chl)))+geom_line()
 
 
 
+# raw counts data ---------------------------------------------------------
+
+nd<-read_csv("Data/DCCO_Nest_Data/DCCO_Nest_2000-2017.csv",trim_ws = T)
+head(nd)
+nd$Date<-mdy(nd$Date)
+nd$Date2<-dmy(nd$Date2)
+nd$Date<-if_else(is.na(nd$Date),nd$Date2,nd$Date)
+nd<- nd %>% select(Date,StartTime,WindStart,WindStartDir,WindEnd,WindEndDir,StartSky, StopSky,
+                   Section,Nests,Notes )
+
+nd$Section<-toupper(nd$Section)
+nd$Section<-str_replace(nd$Section,"/","")
+nd$Section<-str_replace(nd$Section,"-","")
+nd$Section<-str_replace(nd$Section,"\\&","")
+nd$Section<-str_replace("A,�, G","AG",nd$Section
+nd$Section<-gsub("D, E, F, G","DG",nd$Section)
+table(nd$Section)
