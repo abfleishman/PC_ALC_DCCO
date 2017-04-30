@@ -405,6 +405,7 @@ ENSO$Season <- c(rep(1995,6),
   rep(2014,12),
   rep(2015,12),
   rep(2016,8))
+
 ggplot(ENSO,aes(x=Date))+
   geom_path(aes(y=SOI),color="blue")+
   geom_path(aes(y=MEI),color="red")+
@@ -465,73 +466,90 @@ ENSO_start <- ENSO %>%
   Pheno %>%
     left_join(ENSO_start) %>%
     group_by(Type,Anomoly) %>%
-    do(glance(lm(DOS~MEI,data=.))) %>% View
+    do(glance(lm(DOS~MEI+Section,data=.))) %>% View
   Pheno %>%
     left_join(ENSO_start) %>%
     group_by(Type,Anomoly) %>%
-    do(glance(lm(DOS~SOI,data=.))) %>% View
+    do(glance(lm(DOS~SOI+Section,data=.))) %>% View
   Pheno %>%
     left_join(ENSO_start) %>%
     group_by(Type,Anomoly) %>%
-    do(glance(lm(DOS~ONI,data=.))) %>% View
+    do(glance(lm(DOS~ONI+Section,data=.))) %>% View
 
   # End is corrilated#
   Pheno %>%
     left_join(ENSO_end) %>%
     group_by(Type,Anomoly) %>%
-    do(glance(lm(DOS~MEI,data=.))) %>% View
+    do(glance(lm(DOS~MEI+Section,data=.))) %>% View
+
+  # End is corrilated#
   Pheno %>%
     left_join(ENSO_end) %>%
     group_by(Type,Anomoly) %>%
-    do(glance(lm(DOS~SOI,data=.))) %>% View
+    do(glance(lm(DOS~SOI+Section,data=.))) %>% View
+
+  # End is corrilated#
   Pheno %>%
     left_join(ENSO_end) %>%
     group_by(Type,Anomoly) %>%
-    do(glance(lm(DOS~ONI,data=.))) %>% View
+    do(glance(lm(DOS~ONI+Section,data=.))) %>% View
 
-
+  # End is corrilated#
   Pheno %>%
     left_join(ENSO_mid) %>%
     group_by(Type,Anomoly) %>%
-    do(glance(lm(DOS~MEI,data=.))) %>% View
+    do(glance(lm(DOS~MEI+Section,data=.))) %>% View
   Pheno %>%
     left_join(ENSO_mid) %>%
     group_by(Type,Anomoly) %>%
-    do(glance(lm(DOS~SOI,data=.))) %>% View
+    do(glance(lm(DOS~SOI+Section,data=.))) %>% View
   Pheno %>%
     left_join(ENSO_mid) %>%
     group_by(Type,Anomoly) %>%
-    do(glance(lm(DOS~ONI,data=.))) %>% View
+    do(glance(lm(DOS~ONI+Section,data=.))) %>% View
 
   Pheno %>%
     left_join(ENSO_all) %>%
     group_by(Type,Anomoly) %>%
-    do(glance(lm(DOS~MEI,data=.))) %>% View
-  Pheno %>%
-    left_join(ENSO_all,) %>%
-    group_by(Type,Anomoly) %>%
-    do(glance(lm(DOS~SOI,data=.))) %>% View
+    do(glance(lm(DOS~MEI+Section,data=.))) %>% View
   Pheno %>%
     left_join(ENSO_all) %>%
     group_by(Type,Anomoly) %>%
-    do(glance(lm(DOS~ONI,data=.))) %>% View
+    do(glance(lm(DOS~SOI+Section,data=.))) %>% View
+  Pheno %>%
+    left_join(ENSO_all) %>%
+    group_by(Type,Anomoly) %>%
+    do(glance(lm(DOS~ONI+Section,data=.))) %>% View
 
   head(ENSO)
 hmm<-  Pheno %>%
     left_join(ENSO) %>%
     group_by(Type,month=month(Date),Anomoly) %>%
-    do(glance(lm(DOS~SOI,data=.)))
+    do(glance(lm(DOS~SOI+Section,data=.)))
 ggplot(hmm,aes(x=month,y=r.squared))+geom_point() +facet_grid(Anomoly~Type)
-hmm
+View(hmm)
 
+hmm<-  Pheno %>%
+  left_join(ENSO) %>%
+  group_by(Type,month=month(Date),Anomoly) %>%
+  do(glance(lm(DOS~ONI+Section,data=.)))
+ggplot(hmm,aes(x=month,y=r.squared))+geom_point() +facet_grid(Anomoly~Type)
+View(hmm)
 
+hmm<-  Pheno %>%
+  left_join(ENSO) %>%
+  group_by(Type,month=month(Date),Anomoly) %>%
+  do(glance(lm(DOS~MEI+Section,data=.)))
+ggplot(hmm,aes(x=month,y=r.squared))+geom_point() +facet_grid(Anomoly~Type)
+View(hmm)
 # Counts vs index ---------------------------------------------------------
 
 Pheno %>%
   left_join(ENSO) %>%
   left_join(Counts) %>%
   group_by(Type, Anomoly,month=month(Date)) %>%
-  do(tidy(lm(max~MEI+DOS,data=.))) %>% View
+  do(glance(lm(DOS~MEI+Season+Section,data=.))) %>%
+  mutate(p.value=round(p.value,5))%>% View
 
 
 # get oceanography vars ---------------------------------------------------
