@@ -429,13 +429,30 @@ head(nd)
 nd$Date<-mdy(nd$Date)
 nd$Date2<-dmy(nd$Date2)
 nd$Date<-if_else(is.na(nd$Date),nd$Date2,nd$Date)
+nd$Nests<-str_replace(nd$Nests,"~","")
 nd<- nd %>% select(Date,StartTime,WindStart,WindStartDir,WindEnd,WindEndDir,StartSky, StopSky,
-                   Section,Nests,Notes )
+                   Section,Nests,Notes ) %>% mutate(Nests=as.numeric(Nests))
 
+unique(nd$Nests)
+nd$Section<-gsub("A,\\\xc9, G","AG",nd$Section)
 nd$Section<-toupper(nd$Section)
+nd$Section<-str_trim(nd$Section)
+
 nd$Section<-str_replace(nd$Section,"/","")
 nd$Section<-str_replace(nd$Section,"-","")
 nd$Section<-str_replace(nd$Section,"\\&","")
-nd$Section<-str_replace("A,�, G","AG",nd$Section
-nd$Section<-gsub("D, E, F, G","DG",nd$Section)
-table(nd$Section)
+nd$Section<-gsub(" ","",nd$Section)
+nd$Section<-gsub("D,E,F,G","DG",nd$Section)
+table(nd$Section,year(nd$Date))
+
+nd$SectionAF<-str_replace(nd$Section,"^A$|^E$|^B$|^BC$|^C$|^CD$|^DE$|^C$|^DE$|^D$","North")
+nd$SectionAF<-str_replace(nd$SectionAF,"^G$|^FG$|^F$","East")
+nd$SectionAF<-str_replace(nd$SectionAF,"^H$|^I$","West")
+
+head(nd)
+unique(nd$WindStart)
+filter(WindStart%in%c("13mph (NW)","12",">15","15mph (N)",">10","20mph (N)","14mph (NW)")) %>% View
+
+nd1<-nd %>% group_by(Date,SectionAF) %>% summarise(Nests=sum(Nests))
+nd1 %>% group_by(Date,SectionAF) %>% summarise(Nests=sum(Nests))
+ggplot(nd1,aes())
