@@ -23,7 +23,7 @@ nests$Date<-ymd("2000-09-01")+days(nests$DOS)
 
 # Summarize by season using top 5 counts ----------------------------------
 
-Counts<-nests %>% group_by(Season) %>%top_n(n = 5,wt = Count) %>%
+Counts<-nests %>% group_by(Season) %>%top_n(n = 3,wt = Count) %>%
   summarise(max=max(Count),mean=mean(Count),median=median(Count),sd=sd(Count),n=n())
 
 Counts
@@ -354,3 +354,71 @@ hmm<-  Pheno %>%
     do(glance(lm(DOS~SOI,data=.)))
 ggplot(hmm,aes(x=month,y=r.squared))+geom_point() +facet_grid(Anomoly~Type)
 hmm
+
+
+# Counts vs index ---------------------------------------------------------
+
+Pheno %>%
+  left_join(ENSO) %>%
+  left_join(Counts) %>%
+  group_by(Type, Anomoly,month=month(Date)) %>%
+  do(tidy(lm(max~MEI+DOS,data=.))) %>% View
+
+
+# get oceanography vars ---------------------------------------------------
+
+# 28.811285,-111.970331
+#
+# 29.312622, -112.693975
+# 28.458908, -111.710355
+library(xtractomatic)
+a<- searchData(searchList=list(list("dtypename","MW")))
+
+
+erdMWsstdmday<-xtracto_3D(xpos = c(-112.693975,-111.710355)+360,
+                           ypos = c(28.458908,29.312622),
+                           tpos = c("2002-06-24","2017-03-16"), dtype ="erdMWsstdmday" )
+
+
+
+dims <- dim(erdMWsstdmday$data)
+dataOut<-NULL
+for(i in 1:174){
+  temp<-data.frame(sst =c(erdMWsstdmday$data[,,i]))
+  temp$Date<-erdMWsstdmday$time[i]
+  dataOut<-bind_rows(dataOut,temp)
+}
+head(dataOut)
+
+sst<-dataOut %>%
+  group_by(Date) %>%
+  summarise(sst=mean(sst,na.rm=T),sd=sd(sst,na.rm=T))
+
+ggplot(sst,aes(x=ymd(Date),y=sst))+geom_line()
+
+
+
+erdSW1chlamday<-xtracto_3D(xpos = c(-112.693975,-111.710355),
+                           ypos = c(28.458908,29.312622),
+                           tpos = c("2000-05-01","2010-12-16"), dtype ="erdSW1chlamday" )
+erdMWchla8day<-xtracto_3D(xpos = c(-112.693975,-111.710355),
+                           ypos = c(28.458908,29.312622),
+                           tpos = c("2002-07-05","2017-04-25"), dtype ="erdMWchla8day" )
+
+dims <- dim(erdSW1chlamday$data)
+dataOut<-NULL
+for(i in 1:126){
+  temp<-data.frame(chl =c(erdSW1chlamday$data[,,i]))
+  temp$Date<-erdSW1chlamday$time[i]
+  dataOut<-bind_rows(dataOut,temp)
+}
+head(dataOut)
+
+chl<-dataOut %>%
+  group_by(Date) %>%
+  summarise(chl=mean(chl,na.rm=T),sd=sd(chl,na.rm=T))
+
+ggplot(chl,aes(x=ymd(Date),y=log(chl)))+geom_line()
+
+
+
