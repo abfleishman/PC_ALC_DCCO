@@ -32,6 +32,212 @@ top5Count<-nests %>% group_by(Season) %>% top_n(n = 5,wt = Count)
 summary(aov(Count~Season,data=top5Count))
 pairwise.t.test(top5Count$Count,top5Count$Season,p.adjust.method = "bonferroni")
 
+# raw counts data ---------------------------------------------------------
+#
+# nd<-read_csv("Data/DCCO_Nest_Data/DCCO_Nest_2000-2017.csv",trim_ws = T)
+# head(nd)
+# nd$Date<-dmy(nd$Date)
+# nd$Nests<-str_replace(nd$Nests,"~","")
+# nd<- nd %>% select(Date,StartTime,WindStart,WindStartDir,WindEnd,WindEndDir,StartSky, StopSky,
+#                    Section,Nests,Notes ) %>% mutate(Nests=as.numeric(Nests))
+#
+# unique(nd$Nests)
+# nd$Section<-gsub("A,\\\xc9, G","AG",nd$Section)
+# nd$Section<-toupper(nd$Section)
+# nd$Section<-str_trim(nd$Section)
+#
+# nd$Section<-str_replace(nd$Section,"/","")
+# nd$Section<-str_replace(nd$Section,"-","")
+# nd$Section<-str_replace(nd$Section,"\\&","")
+# nd$Section<-gsub(" ","",nd$Section)
+# nd$Section<-gsub("D,E,F,G","DG",nd$Section)
+# table(nd$Section,year(nd$Date))
+#
+# nd$SectionAF<-str_replace(nd$Section,"^A$|^E$|^B$|^BC$|^C$|^CD$|^DE$|^C$|^DE$|^D$","North")
+# nd$SectionAF<-str_replace(nd$SectionAF,"^G$|^FG$|^F$","East")
+# nd$SectionAF<-str_replace(nd$SectionAF,"^H$|^I$","West")
+#
+# head(nd)
+# unique(nd$WindStart)
+#
+# nd1<-nd %>% group_by(Date,SectionAF) %>% summarise(Nests=sum(Nests))
+
+# write.csv(nd1,"DCCO_Nest_sections_AF.csv")
+
+nd1<-read_csv("DCCO_Nest_sections_AF.csv")
+
+# Calculate days from 1 Sep
+nd1$DOS=as.numeric((mdy(nd1$Date)-ymd(paste(nd1$Season,"09","01"))))
+nd1$date<-mdy(nd1$Date)
+nd1$Date<-ymd("2000-09-01")+days(nd1$DOS)
+
+CountsSec<-nd1 %>% filter(SectionAF%in%c("West","East","North")) %>% group_by(Season,Section=SectionAF) %>%top_n(n = 3,wt = Nests) %>%
+  summarise(max=max(Nests),mean=mean(Nests),median=median(Nests),sd=sd(Nests),n=n())
+
+
+# Summary figures ---------------------------------------------------------
+
+# Max count by year
+ggplot(Counts,aes(Season,max,group=Season))+geom_bar(stat="identity",fill="dodgerblue")+theme_bw(base_size = 24)
+ggsave("Plots/max_nest_top_3.jpg")
+
+ggplot(CountsSec,aes(Season,max,group=Section,fill=Section))+geom_bar(stat="identity",show.legend = F)+theme_bw(base_size = 24)
+ggsave("Plots/max_nest_sec_top_3.jpg")
+
+# median count by year
+ggplot(Counts,aes(Season,median,group=Season))+geom_bar(stat="identity",fill="dodgerblue")+theme_bw(base_size = 24)
+ggsave("Plots/median_nest_top_3.jpg")
+
+ggplot(CountsSec,aes(Season,median,fill=Section))+geom_bar(stat="identity")+theme_bw(base_size = 24)
+ggsave("Plots/median_nest_sec_top_3.jpg")
+# Mean count by year
+ggplot(Counts,aes(Season,mean,group=Season))+
+  geom_bar(stat="identity",fill="dodgerblue",position = position_dodge(width = .9))+
+  geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd),position = position_dodge(width = .9))+theme_bw(base_size = 24)
+ggsave("Plots/mean_nest_top_3.jpg")
+
+ggplot(CountsSec,aes(Season,mean,fill=Section))+geom_bar(stat="identity",position = position_dodge(width = .9))+
+  geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd),position = position_dodge(width = .9))+theme_bw(base_size = 24)
+ggsave("Plots/mean_nest_sec_top_3.jpg")
+
+ggplot(CountsSec,aes(Season,median,fill=Section))+geom_point(stat="identity")+geom_smooth(method="lm")+theme_bw(base_size = 24)
+summary(lm(max~Season+Section,CountsSec))
+ggsave("Plots/max_trend_nest_sec_top_3.jpg")
+# Seasonal figures --------------------------------------------------------
+
+ggplot(nests,aes(Date,Count,group=Season,color=factor(Season)))+
+  geom_path()+
+  geom_point()+
+  facet_grid(Season~.)+
+  scale_x_date(date_breaks = "1 month",  date_labels = "%b")
+
+ggsave("Plots/season_Count.jpg",width = 5,height = 12,units = "in")
+
+ggplot(nests,aes(Date,Count,group=Season,color=factor(Season)))+
+  geom_path()+
+  geom_point()+
+  facet_grid(Season~.)+
+  geom_vline(data=Start,aes(xintercept=Date,group=Season),color='red')+
+  scale_x_date(date_breaks = "1 month",  date_labels = "%b")
+
+ggsave("Plots/season_Count_with_top5.jpg",width = 5,height = 12,units = "in")
+
+
+top5Count<-nests %>% group_by(Season) %>% top_n(n = 5,wt = Count)
+
+ggplot(nests,aes(Date,Count,group=Season,color=factor(Season)))+
+  geom_path()+
+  geom_point()+
+  facet_grid(Season~.)+
+  geom_point(data=top5Count,aes(Date,Count,group=Season),color='red')+
+  scale_x_date(date_breaks = "1 month",  date_labels = "%b")
+
+ggsave("Plots/season_Count_with_top5.jpg",width = 5,height = 12,units = "in")
+
+
+top3Count<-nests %>% group_by(Season) %>% top_n(n = 3,wt = Count)
+ggplot(nests,aes(Date,Count,group=Season,color=factor(Season)))+
+  geom_path()+
+  geom_point()+
+  facet_grid(Season~.)+
+  geom_point(data=top3Count,aes(Date,Count,group=Season),color='red')+
+  scale_x_date(date_breaks = "1 month",  date_labels = "%b")
+
+ggsave("Plots/season_Count_with_top3.jpg",width = 5,height = 12,units = "in")
+
+top50PctCount<-nests %>% group_by(Season) %>% filter(Count>.5*max(Count))
+ggplot(nests,aes(Date,Count,group=Season,color=factor(Season)))+
+  geom_path()+
+  geom_point()+
+  facet_grid(Season~.)+
+  geom_point(data=top50PctCount,aes(Date,Count,group=Season),color='red')+
+  scale_x_date(date_breaks = "1 month",  date_labels = "%b")
+
+ggsave("Plots/season_Count_with_greaterThen0.5TimesMax.jpg",width = 5,height = 12,units = "in")
+
+top75PctCount<-nests %>% group_by(Season) %>% filter(Count>.75*max(Count))
+ggplot(nests,aes(Date,Count,group=Season,color=factor(Season)))+
+  geom_path()+
+  geom_point()+
+  facet_grid(Season~.)+
+  geom_point(data=top75PctCount,aes(Date,Count,group=Season),color='red')+
+  scale_x_date(date_breaks = "1 month",  date_labels = "%b")
+
+ggsave("Plots/season_Count_with_greaterThen0.75TimesMax.jpg",width = 5,height = 12,units = "in")
+
+# Seasonal figures Sections ----------------------------------------------------
+nd1$Count<-nd1$Nests
+nd1$Section<-nd1$SectionAF
+nd1<-nd1 %>% group_by(Season,Section) %>% filter(Section%in%c("East","West","North")) %>% arrange(Date)
+head(nd1)
+
+ggplot(nd1,aes(Date,Count,group=Section,color=Section))+
+  geom_path()+
+  geom_point()+
+  facet_grid(Season~.)+
+  scale_x_date(date_breaks = "1 month",  date_labels = "%b")
+
+ggsave("Plots/season_Count_sec.jpg",width = 5,height = 12,units = "in")
+
+
+top5Count<-nd1 %>% group_by(Season,Section) %>% top_n(n = 5,wt = Count)
+
+ggplot(nd1,aes(Date,Count,group=Section,color=Section))+
+  geom_path()+
+  geom_point()+
+  facet_grid(Season~.)+
+  geom_point(data=top5Count,aes(Date,Count,group=Season),color='red')+
+  scale_x_date(date_breaks = "1 month",  date_labels = "%b")
+
+ggsave("Plots/season_Count_with_top5_sec.jpg",width = 5,height = 12,units = "in")
+
+
+
+top5Count<-nd1 %>% group_by(Season,Section) %>% top_n(n = 3,wt = Count)
+
+# East section peaks late in 2013
+ggplot(nd1,aes(Date,Count,group=Section,color=Section))+
+  geom_path()+
+  geom_point()+
+  facet_grid(Season~.)+
+  geom_point(data=top5Count,aes(Date,Count,group=Season),color='red')+
+  scale_x_date(date_breaks = "1 month",  date_labels = "%b")
+
+ggsave("Plots/season_Count_with_top3_sec.jpg",width = 5,height = 12,units = "in")
+
+top50PctCount<-nd1 %>% group_by(Season,Section) %>% filter(Count>.99*max(Count))
+ggplot(nd1,aes(Date,Count,group=Section,color=Section))+
+  geom_path()+
+  geom_point()+
+  facet_grid(Season~.)+
+  geom_point(data=top50PctCount,aes(Date,Count,group=Season),color='red')+
+  scale_x_date(date_breaks = "1 month",  date_labels = "%b")
+
+ggsave("Plots/season_Count_with_greaterThen0.99TimesMax_sec.jpg",width = 5,height = 12,units = "in")
+
+
+# Rolling Mean figures ----------------------------------------------------
+
+roll<-nests %>% group_by(Season) %>% mutate(rollCount2=rollmean(Count,k=2,align = "right", fill = NA),
+                                            rollCount3=rollmean(Count,k=3,align = "right", fill = NA))
+
+ggplot(roll,aes(Date,rollCount2,group=Season,color=factor(Season)))+
+  geom_path()+
+  geom_point()+
+  facet_grid(Season~.)+
+  scale_x_date(date_breaks = "1 month",  date_labels = "%b")
+
+ggsave("Plots/season_Count_2date_rolling_mean.jpg",width = 5,height = 12,units = "in")
+
+ggplot(roll,aes(Date,rollCount3,group=Season,color=factor(Season)))+
+  geom_path()+
+  geom_point()+
+  facet_grid(Season~.)+
+  scale_x_date(date_breaks = "1 month",  date_labels = "%b")
+
+ggsave("Plots/season_Count_3date_rolling_mean.jpg",width = 5,height = 12,units = "in")
+
+
 
 # Phenology ---------------------------------------------------------------
 
@@ -96,107 +302,70 @@ Pheno %>%
   group_by(Type,Anomoly) %>%
   do(glance(lm(DOS~Season,data=.)))
 
-# Summary figures ---------------------------------------------------------
 
-# Max count by year
-ggplot(Counts,aes(Season,max,group=Season))+geom_bar(stat="identity",fill="dodgerblue")+theme_bw(base_size = 24)
-ggsave("Plots/max_nest_top_5.jpg")
-
-# median count by year
-ggplot(Counts,aes(Season,median,group=Season))+geom_bar(stat="identity",fill="dodgerblue")+theme_bw(base_size = 24)
-ggsave("Plots/median_nest_top_5.jpg")
-
-# Mean count by year
-ggplot(Counts,aes(Season,mean,group=Season))+geom_bar(stat="identity",fill="dodgerblue")+
-  geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd))+theme_bw(base_size = 24)
-ggsave("Plots/mean_nest_top_5.jpg")
-
-# Seasonal figures --------------------------------------------------------
-
-ggplot(nests,aes(Date,Count,group=Season,color=factor(Season)))+
-  geom_path()+
-  geom_point()+
-  facet_grid(Season~.)+
-  scale_x_date(date_breaks = "1 month",  date_labels = "%b")
-
-ggsave("Plots/season_Count.jpg",width = 5,height = 12,units = "in")
-
-ggplot(nests,aes(Date,Count,group=Season,color=factor(Season)))+
-  geom_path()+
-  geom_point()+
-  facet_grid(Season~.)+
-  geom_vline(data=Start,aes(xintercept=Date,group=Season),color='red')+
-  scale_x_date(date_breaks = "1 month",  date_labels = "%b")
-
-ggsave("Plots/season_Count_with_top5.jpg",width = 5,height = 12,units = "in")
+# Phone Section -----------------------------------------------------------
 
 
-top5Count<-nests %>% group_by(Season) %>% top_n(n = 5,wt = Count)
+Start33<-nd1 %>%
+  group_by(Season,Section) %>%
+  filter(Count>.33*max(Count)) %>%
+  summarise(DOS_First33=min(DOS),Date_First33=min(Date),DOS_Last33=max(DOS),Date_Last33=max(Date)) %>%
+  ungroup() %>%
+  mutate(DOSA_First33=DOS_First33-mean(DOS_First33),DOSA_Last33=DOS_Last33-mean(DOS_Last33))
 
-ggplot(nests,aes(Date,Count,group=Season,color=factor(Season)))+
-  geom_path()+
-  geom_point()+
-  facet_grid(Season~.)+
-  geom_point(data=top5Count,aes(Date,Count,group=Season),color='red')+
-  scale_x_date(date_breaks = "1 month",  date_labels = "%b")
+End<-nd1 %>%
+  group_by(Season,Section) %>%
+  filter(row_number()==n()) %>%
+  summarise(DOS_end=min(DOS),Date_end=min(Date)) %>%
+  ungroup() %>%
+  mutate(DOSA_end=DOS_end-mean(DOS_end))
 
-ggsave("Plots/season_Count_with_top5.jpg",width = 5,height = 12,units = "in")
+Start<-nd1 %>%
+  group_by(Season,Section) %>%
+  filter(row_number()==1) %>%
+  summarise(DOS_start=min(DOS),Date_start=min(Date)) %>%
+  ungroup() %>%
+  mutate(DOSA_start=DOS_start-mean(DOS_start))
 
+Mid<-nd1 %>%
+  group_by(Season,Section) %>%
+  summarise(DOS_mid=mean(max(DOS)-min(DOS)),Date_mid=ymd("2000-09-01")+days(mean(max(Date)-min(Date)))) %>%
+  ungroup() %>%
+  mutate(DOSA_mid=DOS_mid-mean(DOS_mid))
 
-top3Count<-nests %>% group_by(Season) %>% top_n(n = 3,wt = Count)
-ggplot(nests,aes(Date,Count,group=Season,color=factor(Season)))+
-  geom_path()+
-  geom_point()+
-  facet_grid(Season~.)+
-  geom_point(data=top3Count,aes(Date,Count,group=Season),color='red')+
-  scale_x_date(date_breaks = "1 month",  date_labels = "%b")
+Pheno<-left_join(Start,Start33) %>%
+  left_join(Mid) %>%
+  left_join(End) %>%
+  dplyr::select(Season,Section,starts_with("DO")) %>%
+  mutate(DOS_duration=DOS_end-DOS_start,DOSA_duration=DOS_duration-mean(DOS_duration)) %>%
+  gather(Type,DOS,DOS_start:DOSA_duration) %>%
+  arrange(Season,Type,Section) %>%
+  mutate(Anomoly=str_detect(Type,"A"),
+         Type=str_replace(Type,"DOSA_|DOS_",""),
+         Anomoly=ifelse(Anomoly==TRUE,"Anomoly","DOS"))
 
-ggsave("Plots/season_Count_with_top3.jpg",width = 5,height = 12,units = "in")
+Pheno$Type<-factor(Pheno$Type,levels=c("start","First33","mid","Last33","end","duration"))
 
-top50PctCount<-nests %>% group_by(Season) %>% filter(Count>.5*max(Count))
-ggplot(nests,aes(Date,Count,group=Season,color=factor(Season)))+
-  geom_path()+
-  geom_point()+
-  facet_grid(Season~.)+
-  geom_point(data=top50PctCount,aes(Date,Count,group=Season),color='red')+
-  scale_x_date(date_breaks = "1 month",  date_labels = "%b")
+head(Pheno)
+# Phenology plot
+ggplot(Pheno,aes(Season,DOS))+
+  geom_bar(stat="identity",fill="dodgerblue",color="black")+
+  theme_bw(base_size = 24)+theme(axis.text.x = element_text(angle=90,vjust = .5),panel.grid = element_blank())+
+  ylab("Day of Season")+
+  facet_grid( Anomoly+Section~Type,scales = "free_y")
 
-ggsave("Plots/season_Count_with_greaterThen0.5TimesMax.jpg",width = 5,height = 12,units = "in")
+ggsave("Plots/Phenology.jpg",width = 9,height=6)
 
-top75PctCount<-nests %>% group_by(Season) %>% filter(Count>.75*max(Count))
-ggplot(nests,aes(Date,Count,group=Season,color=factor(Season)))+
-  geom_path()+
-  geom_point()+
-  facet_grid(Season~.)+
-  geom_point(data=top75PctCount,aes(Date,Count,group=Season),color='red')+
-  scale_x_date(date_breaks = "1 month",  date_labels = "%b")
+# Relationship between phenology and year?
+ggplot(Pheno,aes(Season,DOS))+
+  geom_point()+geom_smooth(method="lm")+
+  facet_grid( Anomoly~Type,scales = "free_y")
 
-ggsave("Plots/season_Count_with_greaterThen0.75TimesMax.jpg",width = 5,height = 12,units = "in")
-
-
-# Rolling Mean figures ----------------------------------------------------
-
-roll<-nests %>% group_by(Season) %>% mutate(rollCount2=rollmean(Count,k=2,align = "right", fill = NA),
-                                            rollCount3=rollmean(Count,k=3,align = "right", fill = NA))
-
-ggplot(roll,aes(Date,rollCount2,group=Season,color=factor(Season)))+
-  geom_path()+
-  geom_point()+
-  facet_grid(Season~.)+
-  scale_x_date(date_breaks = "1 month",  date_labels = "%b")
-
-ggsave("Plots/season_Count_2date_rolling_mean.jpg",width = 5,height = 12,units = "in")
-
-ggplot(roll,aes(Date,rollCount3,group=Season,color=factor(Season)))+
-  geom_path()+
-  geom_point()+
-  facet_grid(Season~.)+
-  scale_x_date(date_breaks = "1 month",  date_labels = "%b")
-
-ggsave("Plots/season_Count_3date_rolling_mean.jpg",width = 5,height = 12,units = "in")
-
-
-
+library(broom)
+# There is a negitive relationship between last33 and year. not sure if valid since I have not throughly checked last33 for sanity
+Pheno %>%
+  group_by(Type,Anomoly) %>%
+  do(tidy(lm(DOS~Season+Section,data=.))) %>% View
 # Oceanography - SOI, ONI, MEI --------------------------------------------
 
 SOI<-read_csv("Data/Oceanographic_data/SOI.csv")
@@ -422,37 +591,3 @@ ggplot(chl,aes(x=ymd(Date),y=log(chl)))+geom_line()
 
 
 
-# raw counts data ---------------------------------------------------------
-
-nd<-read_csv("Data/DCCO_Nest_Data/DCCO_Nest_2000-2017.csv",trim_ws = T)
-head(nd)
-nd$Date<-mdy(nd$Date)
-nd$Date2<-dmy(nd$Date2)
-nd$Date<-if_else(is.na(nd$Date),nd$Date2,nd$Date)
-nd$Nests<-str_replace(nd$Nests,"~","")
-nd<- nd %>% select(Date,StartTime,WindStart,WindStartDir,WindEnd,WindEndDir,StartSky, StopSky,
-                   Section,Nests,Notes ) %>% mutate(Nests=as.numeric(Nests))
-
-unique(nd$Nests)
-nd$Section<-gsub("A,\\\xc9, G","AG",nd$Section)
-nd$Section<-toupper(nd$Section)
-nd$Section<-str_trim(nd$Section)
-
-nd$Section<-str_replace(nd$Section,"/","")
-nd$Section<-str_replace(nd$Section,"-","")
-nd$Section<-str_replace(nd$Section,"\\&","")
-nd$Section<-gsub(" ","",nd$Section)
-nd$Section<-gsub("D,E,F,G","DG",nd$Section)
-table(nd$Section,year(nd$Date))
-
-nd$SectionAF<-str_replace(nd$Section,"^A$|^E$|^B$|^BC$|^C$|^CD$|^DE$|^C$|^DE$|^D$","North")
-nd$SectionAF<-str_replace(nd$SectionAF,"^G$|^FG$|^F$","East")
-nd$SectionAF<-str_replace(nd$SectionAF,"^H$|^I$","West")
-
-head(nd)
-unique(nd$WindStart)
-filter(WindStart%in%c("13mph (NW)","12",">15","15mph (N)",">10","20mph (N)","14mph (NW)")) %>% View
-
-nd1<-nd %>% group_by(Date,SectionAF) %>% summarise(Nests=sum(Nests))
-nd1 %>% group_by(Date,SectionAF) %>% summarise(Nests=sum(Nests))
-ggplot(nd1,aes())
