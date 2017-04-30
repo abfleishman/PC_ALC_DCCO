@@ -19,6 +19,7 @@ nests<-nests %>% rename(Count=`Active Nests`) %>% arrange(date)
 # Calculate days from 1 Sep
 nests$DOS=as.numeric((as.Date(nests$date)-ymd(paste(nests$Season,"09","01"))))
 
+nests$Date<-ymd("2000-09-01")+days(nests$DOS)
 
 # Summarize by season using top 5 counts ----------------------------------
 
@@ -65,14 +66,14 @@ Pheno<-left_join(Start,Start33) %>%
   left_join(Mid) %>%
   left_join(End) %>%
   dplyr::select(Season,starts_with("DO")) %>%
-  gather(Type,DOS,DOS_start:DOSA_end) %>%
+  mutate(DOS_duration=DOS_end-DOS_start,DOSA_duration=DOS_duration-mean(DOS_duration)) %>%
+  gather(Type,DOS,DOS_start:DOSA_duration) %>%
   arrange(Season,Type) %>%
   mutate(Anomoly=str_detect(Type,"A"),
          Type=str_replace(Type,"DOSA_|DOS_",""),
-         Anomoly=ifelse(Anomoly==TRUE,"Anomoly","DOS"),
-         Duation=end-start)
+         Anomoly=ifelse(Anomoly==TRUE,"Anomoly","DOS"))
 
-Pheno$Type<-factor(Pheno$Type,levels=c("start","First33","mid","Last33","end"))
+Pheno$Type<-factor(Pheno$Type,levels=c("start","First33","mid","Last33","end","duration"))
 
 head(Pheno)
 # Phenology plot
@@ -110,7 +111,6 @@ ggplot(Counts,aes(Season,mean,group=Season))+geom_bar(stat="identity",fill="dodg
   geom_errorbar(aes(ymin=mean-sd,ymax=mean+sd))+theme_bw(base_size = 24)
 ggsave("Plots/mean_nest_top_5.jpg")
 
-nests$Date<-ymd("2000-09-01")+days(nests$DOS)
 # Seasonal figures --------------------------------------------------------
 
 ggplot(nests,aes(Date,Count,group=Season,color=factor(Season)))+
@@ -195,3 +195,162 @@ ggplot(roll,aes(Date,rollCount3,group=Season,color=factor(Season)))+
 
 ggsave("Plots/season_Count_3date_rolling_mean.jpg",width = 5,height = 12,units = "in")
 
+
+
+# Oceanography - SOI, ONI, MEI --------------------------------------------
+
+SOI<-read_csv("Data/Oceanographic_data/SOI.csv")
+SOI$Date<-ymd(paste(SOI$Date,"01"))
+
+ONI<-read_csv("Data/Oceanographic_data/ONI.csv")
+ONI$Date<-ymd(paste(ONI$PeriodNum,"01"))
+ONI<- ONI %>% select(year=Year,Date,ONI)
+
+MEI<-read_csv("Data/Oceanographic_data/MEI.csv")
+MEI<-gather(MEI, Months,MEI,DECJAN:NOVDEC)
+MEI$Month<-str_sub(MEI$Months,4,6)
+MEI$Date<-ymd(paste(MEI$YEAR,MEI$Month,"01"))
+MEI<- MEI %>% select(year=YEAR,Date,MEI)
+
+ENSO<-SOI %>% left_join(ONI) %>% left_join(MEI) %>%
+  filter(year>1995)
+ENSO$Season <- c(rep(1995,6),
+  rep(1996,12),
+  rep(1997,12),
+  rep(1998,12),
+  rep(1999,12),
+  rep(2000,12),
+  rep(2001,12),
+  rep(2002,12),
+  rep(2003,12),
+  rep(2004,12),
+  rep(2005,12),
+  rep(2006,12),
+  rep(2007,12),
+  rep(2008,12),
+  rep(2009,12),
+  rep(2010,12),
+  rep(2011,12),
+  rep(2012,12),
+  rep(2013,12),
+  rep(2014,12),
+  rep(2015,12),
+  rep(2016,8))
+ggplot(ENSO,aes(x=Date))+
+  geom_path(aes(y=SOI),color="blue")+
+  geom_path(aes(y=MEI),color="red")+
+  geom_path(aes(y=ONI),color="green")
+
+ENSO_start <- ENSO %>%
+  filter(month(Date)%in%c(8,9,10)) %>%
+  group_by(Season) %>%
+  summarise(MEI=mean(MEI),
+            SOI=mean(SOI),
+            ONI=mean(ONI))
+
+  ENSO_pre <- ENSO %>%
+    filter(month(Date)%in%c(6,7,8)) %>%
+  group_by(Season) %>%
+    summarise(MEI=mean(MEI),
+              SOI=mean(SOI),
+              ONI=mean(ONI))
+
+  ENSO_mid <- ENSO %>%
+    filter(month(Date)%in%c(10,11,12)) %>%
+    group_by(Season) %>%
+    summarise(MEI=mean(MEI),
+              SOI=mean(SOI),
+              ONI=mean(ONI))
+
+  ENSO_all <- ENSO %>%
+    filter(month(Date)%in%c(9,10,11,12,1,2,3)) %>%
+    group_by(Season) %>%
+    summarise(MEI=mean(MEI),
+              SOI=mean(SOI),
+              ONI=mean(ONI))
+
+
+  ENSO_end <- ENSO %>%
+    filter(month(Date)%in%c(1,2,3)) %>%
+    group_by(Season) %>%
+    summarise(MEI=mean(MEI),
+              SOI=mean(SOI),
+              ONI=mean(ONI))
+  phenoENSO<-Pheno %>% left_join(ENSO_start)
+
+  ggsave("Plots/Phenology.jpg",width = 9,height=6)
+
+  # Relationship between phenology and year?
+  ggplot(phenoENSO,aes(MEI,DOS))+
+    geom_point()+geom_smooth(method="lm")+
+    facet_grid( Anomoly~Type,scales = "free_y")
+  ggplot(phenoENSO,aes(SOI,DOS))+
+    geom_point()+geom_smooth(method="lm")+
+    facet_grid( Anomoly~Type,scales = "free_y")
+  ggplot(phenoENSO,aes(ONI,DOS))+
+    geom_point()+geom_smooth(method="lm")+
+    facet_grid( Anomoly~Type,scales = "free_y")
+
+  library(broom)
+  # There is a negitive relationship between last33 and year. not sure if valid since I have not throughly checked last33 for sanity
+  Pheno %>%
+    left_join(ENSO_start) %>%
+    group_by(Type,Anomoly) %>%
+    do(glance(lm(DOS~MEI,data=.))) %>% View
+  Pheno %>%
+    left_join(ENSO_start) %>%
+    group_by(Type,Anomoly) %>%
+    do(glance(lm(DOS~SOI,data=.))) %>% View
+  Pheno %>%
+    left_join(ENSO_start) %>%
+    group_by(Type,Anomoly) %>%
+    do(glance(lm(DOS~ONI,data=.))) %>% View
+
+  # End is corrilated#
+  Pheno %>%
+    left_join(ENSO_end) %>%
+    group_by(Type,Anomoly) %>%
+    do(glance(lm(DOS~MEI,data=.))) %>% View
+  Pheno %>%
+    left_join(ENSO_end) %>%
+    group_by(Type,Anomoly) %>%
+    do(glance(lm(DOS~SOI,data=.))) %>% View
+  Pheno %>%
+    left_join(ENSO_end) %>%
+    group_by(Type,Anomoly) %>%
+    do(glance(lm(DOS~ONI,data=.))) %>% View
+
+
+  Pheno %>%
+    left_join(ENSO_mid) %>%
+    group_by(Type,Anomoly) %>%
+    do(glance(lm(DOS~MEI,data=.))) %>% View
+  Pheno %>%
+    left_join(ENSO_mid) %>%
+    group_by(Type,Anomoly) %>%
+    do(glance(lm(DOS~SOI,data=.))) %>% View
+  Pheno %>%
+    left_join(ENSO_mid) %>%
+    group_by(Type,Anomoly) %>%
+    do(glance(lm(DOS~ONI,data=.))) %>% View
+
+  Pheno %>%
+    left_join(ENSO_all) %>%
+    group_by(Type,Anomoly) %>%
+    do(glance(lm(DOS~MEI,data=.))) %>% View
+  Pheno %>%
+    left_join(ENSO_all,) %>%
+    group_by(Type,Anomoly) %>%
+    do(glance(lm(DOS~SOI,data=.))) %>% View
+  Pheno %>%
+    left_join(ENSO_all) %>%
+    group_by(Type,Anomoly) %>%
+    do(glance(lm(DOS~ONI,data=.))) %>% View
+
+  head(ENSO)
+hmm<-  Pheno %>%
+    left_join(ENSO) %>%
+    group_by(Type,month=month(Date),Anomoly) %>%
+    do(glance(lm(DOS~SOI,data=.)))
+ggplot(hmm,aes(x=month,y=r.squared))+geom_point() +facet_grid(Anomoly~Type)
+hmm
