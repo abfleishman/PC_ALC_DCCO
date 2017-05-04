@@ -241,29 +241,32 @@ ggsave("Plots/season_Count_3date_rolling_mean.jpg",width = 5,height = 12,units =
 
 # Phenology ---------------------------------------------------------------
 
-Start33<-nests %>%
-  group_by(Season) %>%
+Start33<-nd1 %>%
+  group_by(Season,Section) %>%
   filter(Count>.33*max(Count)) %>%
   summarise(DOS_First33=min(DOS),Date_First33=min(Date),DOS_Last33=max(DOS),Date_Last33=max(Date)) %>%
   ungroup() %>%
   mutate(DOSA_First33=DOS_First33-mean(DOS_First33),DOSA_Last33=DOS_Last33-mean(DOS_Last33))
 
-End<-nests %>%
-  group_by(Season) %>%
+End<-nd1 %>%
+  group_by(Season,Section) %>%
+  filter(Count>0) %>%
   filter(row_number()==n()) %>%
   summarise(DOS_end=min(DOS),Date_end=min(Date)) %>%
   ungroup() %>%
   mutate(DOSA_end=DOS_end-mean(DOS_end))
 
-Start<-nests %>%
-  group_by(Season) %>%
+Start<-nd1 %>%
+  group_by(Season,Section) %>%
+  filter(Count>max(Count)*.1) %>%
   filter(row_number()==1) %>%
   summarise(DOS_start=min(DOS),Date_start=min(Date)) %>%
   ungroup() %>%
   mutate(DOSA_start=DOS_start-mean(DOS_start))
 
-Mid<-nests %>%
-  group_by(Season) %>%
+Mid<-nd1 %>%
+  group_by(Season,Section) %>%
+  filter(Count>max(Count)*.1) %>%
   summarise(DOS_mid=mean(max(DOS)-min(DOS)),Date_mid=ymd("2000-09-01")+days(mean(max(Date)-min(Date)))) %>%
   ungroup() %>%
   mutate(DOSA_mid=DOS_mid-mean(DOS_mid))
@@ -271,7 +274,7 @@ Mid<-nests %>%
 Pheno<-left_join(Start,Start33) %>%
   left_join(Mid) %>%
   left_join(End) %>%
-  dplyr::select(Season,starts_with("DO")) %>%
+  dplyr::select(Season,Section,starts_with("DO")) %>%
   mutate(DOS_duration=DOS_end-DOS_start,DOSA_duration=DOS_duration-mean(DOS_duration)) %>%
   gather(Type,DOS,DOS_start:DOSA_duration) %>%
   arrange(Season,Type) %>%
@@ -283,89 +286,25 @@ Pheno$Type<-factor(Pheno$Type,levels=c("start","First33","mid","Last33","end","d
 
 head(Pheno)
 # Phenology plot
-ggplot(Pheno,aes(Season,DOS))+
-  geom_bar(stat="identity",fill="dodgerblue",color="black")+
-  theme_bw(base_size = 24)+theme(axis.text.x = element_text(angle=90,vjust = .5),panel.grid = element_blank())+
-  ylab("Day of Season")+
-  facet_grid( Anomoly~Type,scales = "free_y")
-
-ggsave("Plots/Phenology.jpg",width = 9,height=6)
-
-# Relationship between phenology and year?
-ggplot(Pheno,aes(Season,DOS))+
-  geom_point()+geom_smooth(method="lm")+
-  facet_grid( Anomoly~Type,scales = "free_y")
-
-library(broom)
-# There is a negitive relationship between last33 and year. not sure if valid since I have not throughly checked last33 for sanity
-Pheno %>%
-  group_by(Type,Anomoly) %>%
-  do(glance(lm(DOS~Season,data=.)))
-
-
-# Phone Section -----------------------------------------------------------
-
-
-Start33<-nd1 %>%
-  group_by(Season,Section) %>%
-  filter(Count>.33*max(Count)) %>%
-  summarise(DOS_First33=min(DOS),Date_First33=min(Date),DOS_Last33=max(DOS),Date_Last33=max(Date)) %>%
-  ungroup() %>%
-  mutate(DOSA_First33=DOS_First33-mean(DOS_First33),DOSA_Last33=DOS_Last33-mean(DOS_Last33))
-
-End<-nd1 %>%
-  group_by(Season,Section) %>%
-  filter(row_number()==n()) %>%
-  summarise(DOS_end=min(DOS),Date_end=min(Date)) %>%
-  ungroup() %>%
-  mutate(DOSA_end=DOS_end-mean(DOS_end))
-
-Start<-nd1 %>%
-  group_by(Season,Section) %>%
-  filter(row_number()==1) %>%
-  summarise(DOS_start=min(DOS),Date_start=min(Date)) %>%
-  ungroup() %>%
-  mutate(DOSA_start=DOS_start-mean(DOS_start))
-
-Mid<-nd1 %>%
-  group_by(Season,Section) %>%
-  summarise(DOS_mid=mean(max(DOS)-min(DOS)),Date_mid=ymd("2000-09-01")+days(mean(max(Date)-min(Date)))) %>%
-  ungroup() %>%
-  mutate(DOSA_mid=DOS_mid-mean(DOS_mid))
-
-Pheno<-left_join(Start,Start33) %>%
-  left_join(Mid) %>%
-  left_join(End) %>%
-  dplyr::select(Season,Section,starts_with("DO")) %>%
-  mutate(DOS_duration=DOS_end-DOS_start,DOSA_duration=DOS_duration-mean(DOS_duration)) %>%
-  gather(Type,DOS,DOS_start:DOSA_duration) %>%
-  arrange(Season,Type,Section) %>%
-  mutate(Anomoly=str_detect(Type,"A"),
-         Type=str_replace(Type,"DOSA_|DOS_",""),
-         Anomoly=ifelse(Anomoly==TRUE,"Anomoly","DOS"))
-
-Pheno$Type<-factor(Pheno$Type,levels=c("start","First33","mid","Last33","end","duration"))
-
-head(Pheno)
-# Phenology plot
-ggplot(Pheno,aes(Season,DOS))+
-  geom_bar(stat="identity",fill="dodgerblue",color="black")+
+ggplot(Pheno,aes(Season,DOS,fill=Section))+
+  geom_bar(stat="identity",color="black")+
   theme_bw(base_size = 24)+theme(axis.text.x = element_text(angle=90,vjust = .5),panel.grid = element_blank())+
   ylab("Day of Season")+
   facet_grid( Anomoly+Section~Type,scales = "free_y")
 
-ggsave("Plots/Phenology.jpg",width = 9,height=6)
+ggsave("Plots/Phenology_sec.jpg",width = 9,height=6)
 
 # Relationship between phenology and year?
 ggplot(Pheno,aes(Season,DOS))+
   geom_point()+geom_smooth(method="lm")+
-  facet_grid( Anomoly~Type,scales = "free_y")
+  facet_grid( Anomoly+Section~Type,scales = "free_y")
 
 library(broom)
 # There is a negitive relationship between last33 and year. not sure if valid since I have not throughly checked last33 for sanity
 Pheno %>%
   group_by(Type,Anomoly) %>%
-  do(tidy(lm(DOS~Season+Section,data=.))) %>% View
+  do(glance(lm(DOS~Season+Section,data=.))) %>% data.frame
+
 # Oceanography - SOI, ONI, MEI --------------------------------------------
 
 SOI<-read_csv("Data/Oceanographic_data/SOI.csv")
@@ -548,7 +487,7 @@ Pheno %>%
   left_join(ENSO) %>%
   left_join(Counts) %>%
   group_by(Type, Anomoly,month=month(Date)) %>%
-  do(glance(lm(DOS~MEI+Season+Section,data=.))) %>%
+  do(glance(lme(max~MEI+Season+Section,data=.))) %>%
   mutate(p.value=round(p.value,5))%>% View
 
 
@@ -591,7 +530,8 @@ erdSW1chlamday<-xtracto_3D(xpos = c(-112.693975,-111.710355),
 erdMWchla8day<-xtracto_3D(xpos = c(-112.693975,-111.710355),
                            ypos = c(28.458908,29.312622),
                            tpos = c("2002-07-05","2017-04-25"), dtype ="erdMWchla8day" )
-
+saveRDS(erdSW1chlamday,"erdSW1chlamday.rds")
+saveRDS(erdMWchla8day,"erdMWchla8day.rds")
 dims <- dim(erdSW1chlamday$data)
 dataOut<-NULL
 for(i in 1:126){
@@ -608,4 +548,47 @@ chl<-dataOut %>%
 ggplot(chl,aes(x=ymd(Date),y=log(chl)))+geom_line()
 
 
+dims <- dim(erdMWchla8day$data)
+dataOut<-NULL
+for(i in 1:5188){
+  temp<-data.frame(chl =c(erdMWchla8day$data[,,i]))
+  temp$Date<-erdMWchla8day$time[i]
+  dataOut<-bind_rows(dataOut,temp)
+}
+head(dataOut)
+saveRDS(dataOut,"erdMWchla8day_table.rds")
+dataOut$Date<-ymd(dataOut$Date)
+dataOut$month<-month(dataOut$Date)
+dataOut$year<-year(dataOut$Date)
 
+chl1<-dataOut %>%
+  group_by(year,month) %>%
+  summarise(chl=mean(chl,na.rm=T),sd=sd(chl,na.rm=T))
+
+ggplot()+
+  geom_line(data=chl1,aes(x=ymd(paste(year,month,16)),y=log(chl)),color="blue")+
+  geom_line(data=chl,aes(x=ymd(Date),y=(chl)),color="red")
+
+
+
+  head(chl1)
+head(Pheno)
+all<-Pheno %>%
+  left_join(ENSO) %>%
+  left_join(Counts) %>%
+  mutate(month=month(Date)) %>%
+  rename(sd_count=sd) %>%
+  left_join(chl1)
+all<-Counts %>%
+  rename(sd_count=sd) %>%
+  left_join(chl1,by=c("Season"="year"))
+ggplot(all[!is.na(all$max)&!is.na(all$chl),],aes(x=chl,y=max))+
+  geom_point()+
+  facet_wrap(~month)+
+  geom_smooth(method="lm")
+
+all %>%
+  filter(!is.na(chl)) %>%
+  group_by(month) %>%
+  do(glance(lm(max~chl,data=.))) %>%
+  mutate(p.value=round(p.value,5)) %>% View
