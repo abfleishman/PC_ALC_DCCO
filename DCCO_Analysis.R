@@ -618,6 +618,38 @@ chl1<-chl1 %>% ungroup() %>%
 # ggplot()+
 #   geom_line(data=chl1,aes(x=ymd(paste(year,month,16)),y=(chl)),color="blue")+
 #   geom_line(data=chl,aes(x=ymd(Date),y=(chl)),color="red")
+# library(rerddapXtracto)
+# library(rerddap)
+# dataInfo <- info('erdMH1pp8day')
+# erdPPbfp2mday <- rxtracto_3D(dataInfo,
+#                              parameter = 'productivity',
+#                              xcoord=c(-112.693975,-111.710355),
+#                              ycoord=c(28.458908,29.312622),
+#                              zcoord = 0.0, tcoord=c("2003-01-05","2017-05-02"),
+#                              xName='longitude', yName='latitude', zName='altitude',
+#                              tName='time', urlbase='http://upwell.pfeg.noaa.gov/erddap')
+#
+#
+#
+# dims <- dim(erdPPbfp2mday$productivity)
+# dataOut<-NULL
+# for(i in 1:5214){
+#   print(paste(i))
+#   temp<-data.frame(chl =c(erdPPbfp2mday$productivity[,,,i]))
+#   temp$Date<-ymd(erdPPbfp2mday$time[i])
+#   dataOut<-bind_rows(dataOut,temp)
+# }
+# head(dataOut)
+npp<-dataOut %>%
+  mutate(Date=ymd(Date),year=year(Date),month=month(Date),
+         Season=year(Date-months(6))) %>%
+  select(-Date)
+#
+npp<-npp %>%
+  group_by(year,month,Season) %>%
+  summarise(pp=mean(chl,na.rm=T),pp_sd=sd(chl,na.rm=T))
+saveRDS(npp,"erdPPbfp2mday.rds")
+npp<-readRDS("erdPPbfp2mday.rds")
 
 
 
@@ -634,21 +666,19 @@ all<-Pheno %>%
 Ocean<-sst %>%
   rename(sd_sst=sd) %>%
   left_join(chl1) %>%
-  rename(sd_chl=sd) %>%filter(!is.na(sst))
-
+  rename(sd_chl=sd) %>%filter(!is.na(sst)) %>%
+  left_join(npp)
+head(Ocean)
 
 all<-Counts %>%
-  rename(sd_count=sd) %>%
-  left_join(chl1) %>%
-  rename(sd_chl=sd,max_c=max) %>%
-  left_join(sst) %>% filter(!is.na(sst))
+  rename(sd_count=sd,max_count=max) %>%
+  left_join(Ocean)
 
-ggplot(all[!is.na(all$sst)&all$Season!=2005,],aes(x=chl,y=max_c))+
+ggplot(all[!is.na(all$pp)&all$Season!=2005,],aes(x=pp,y=max_count))+
   geom_text(aes(label=Season))+
   facet_wrap(~month)+
   geom_smooth(method="lm")
 
-ENSO
 
 ggplot(all,aes(x=sst))+geom_density(aes(group=factor(month),fill=factor(month)))+facet_grid(month~.)
 ggplot(all,aes(x=month,y=sst))+geom_bar(stat ="identity",aes())+facet_grid(Season~.)
@@ -670,7 +700,7 @@ ggplot(Ocean,aes(x=month,y=log(chl),group=Season,colour=factor(Season)))+geom_pa
 all %>%
   filter(!is.na(sst),Season!=2005) %>%
   group_by(month) %>%
-  do(glance(lm(max_c~chl+sd,data=.))) %>%
+  do(glance(lm(max_count~pp_sd,data=.))) %>%
   mutate(p.value=round(p.value,5)) %>% View
 
 library(lme4)
@@ -682,5 +712,28 @@ chl_m<-chl1 %>%
   dplyr::select(Season,month,chl) %>% filter(month%in%7:12) %>%
   mutate(month=paste0("chl_",month)) %>%
   spread(month,value = chl)
+
+SOI_m<-ENSO %>% mutate(month=paste0("SOI_",month(Date))) %>%
+  filter(month(Date)%in%7:12) %>%
+  select(month,Season,SOI) %>% spread(month,SOI)
+MEI_m<-ENSO %>% mutate(month=paste0("MEI_",month(Date))) %>%
+  filter(month(Date)%in%7:12) %>%
+  select(month,Season,MEI) %>% spread(month,MEI)
+ONI_m<-ENSO %>% mutate(month=paste0("ONI_",month(Date))) %>%
+  filter(month(Date)%in%7:12) %>%
+  select(month,Season,ONI) %>% spread(month,ONI)
+Counts_oce<-CountsSec %>%
+  left_join(SOI_m)%>%
+  left_join(MEI_m)%>%
+  left_join(ONI_m) %>%
+  left_join(chl_m) %>%
+  left_join(sst_m)
+
+quartz()
+a<-cor(select(Counts_oce,-n),use = "na")
+a[a<.5]<-NA
+
+plot(lmer(max~SOI_11*chl_11*sst_11+(1|Section),data=Counts_oce))
+
 ENSO
 lmer(max_c~chl+sst+(1|Season),data=all)
