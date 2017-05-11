@@ -85,6 +85,9 @@ ggsave("Plots/max_nest_top_3.jpg")
 ggplot(CountsSec,aes(Season,max,group=Section,fill=Section))+geom_bar(stat="identity",show.legend = T)+theme_bw(base_size = 24)+theme(legend.position = "bottom")
 ggsave("Plots/max_nest_sec_top_3.jpg")
 
+ggplot(CountsSec,aes(Season,max,group=Section,fill=Section))+geom_bar(stat="identity",position = "dodge",show.legend = T)+theme_bw(base_size = 24)+theme(legend.position = "bottom")
+ggsave("Plots/max_nest_sec_top_3_sideby.jpg")
+
 # median count by year
 ggplot(Counts,aes(Season,median,group=Season))+geom_bar(stat="identity",fill="dodgerblue")+theme_bw(base_size = 24)
 ggsave("Plots/median_nest_top_3.jpg")
