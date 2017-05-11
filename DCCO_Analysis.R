@@ -684,7 +684,7 @@ ggplot(all,aes(x=sst))+geom_density(aes(group=factor(month),fill=factor(month)))
 ggplot(all,aes(x=month,y=sst))+geom_bar(stat ="identity",aes())+facet_grid(Season~.)
 
 Ocean$month<-factor(Ocean$month,levels=c(7,8,9,10,11,12,1,2,3,4,5,6))
-Ocean <- Ocean %>% filter(Season %in%c(2002,2009,2010:2016))
+Ocean <- Ocean %>% filter(Season %in%c(2009,2010:2016))
 Sums<-Ocean %>%
   group_by(month) %>%
   summarise(sstM=mean(sst, na.rm=T),sst_sd=sd(sst,na.rm=T),
@@ -695,7 +695,9 @@ ggplot(Ocean,aes(x=month,y=sd_sst))+
   geom_path(aes(group=Season,colour=factor(Season)),size=1)
 
 ggplot(Sums,aes(x=month,y=chlM))+geom_bar(stat ="identity")+geom_errorbar(aes(ymin=chlM-chl_sd,ymax=chlM+chl_sd))
-ggplot(Ocean,aes(x=month,y=log(chl),group=Season,colour=factor(Season)))+geom_path(size=1)+geom_hline(yintercept =log(mean(Ocean$chl)))
+ggplot(Ocean,aes(x=month,y=chl,group=Season,colour=factor(Season)))+geom_path(size=1)+geom_hline(yintercept =log(mean(Ocean$chl)))
+ggplot(Ocean,aes(x=month,y=pp))+
+  geom_path(aes(group=Season,colour=factor(Season)),size=1)
 
 all %>%
   filter(!is.na(sst),Season!=2005) %>%
