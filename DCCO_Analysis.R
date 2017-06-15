@@ -67,15 +67,23 @@ nd1<-nd %>% group_by(Date,SectionAF) %>% summarise(Nests=ceiling(sum(Nests,na.rm
 nd1<-read_csv("DCCO_Nest_sections_AF.csv")
 
 # Calculate days from 1 Sep
-nd1$DOS=as.numeric((mdy(nd1$Date)-ymd(paste(nd1$Season,"09","01"))))
+nd1$DOS<-as.numeric((mdy(nd1$Date)-ymd(paste(nd1$Season,"09","01"))))
 nd1$date<-mdy(nd1$Date)
+nd1$month<-month(nd1$date)
 nd1$Date<-ymd("2000-09-01")+days(nd1$DOS)
-
+head(nd1)
 CountsSec<-nd1 %>% filter(SectionAF%in%c("West","East","North")) %>%
   group_by(Season,Section=SectionAF) %>%top_n(n = 3,wt = Nests) %>%
   summarise(max=max(Nests),mean=mean(Nests),median=median(Nests),sd=sd(Nests),n=n())
 
+CountsSecMon<-nd1 %>% filter(SectionAF%in%c("West","East","North")) %>%
+  group_by(Season,Section=SectionAF,month) %>%top_n(n = 3,wt = Nests) %>%
+  summarise(max=max(Nests),mean=mean(Nests),median=median(Nests),sd=sd(Nests),n=n())
 
+CountsSecMon %>%
+  group_by(month) %>%
+  do(tidy(lm(max~Season+Section,data=.))) %>% View
+CountsSecMon
 # Summary figures ---------------------------------------------------------
 
 # Max count by year
